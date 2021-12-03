@@ -7,6 +7,7 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import com.netflix.appinfo.InstanceInfo;
@@ -90,6 +91,8 @@ public class EurekaClientServerRestIntegrationTest {
                 serverCodecs,
                 eurekaServiceUrl
         );
+
+        TimeUnit.HOURS.sleep(1);
     }
 
     @AfterClass
@@ -210,7 +213,8 @@ public class EurekaClientServerRestIntegrationTest {
      * This will be read by server internal discovery client. We need to salience it.
      */
     private static void injectEurekaConfiguration() throws UnknownHostException {
-        String myHostName = InetAddress.getLocalHost().getHostName();
+//        String myHostName = InetAddress.getLocalHost().getHostName();
+        String myHostName = "localhost";
         String myServiceUrl = "http://" + myHostName + ":8080/v2/";
 
         System.setProperty("eureka.region", "default");
@@ -235,15 +239,27 @@ public class EurekaClientServerRestIntegrationTest {
         File warFile = findWar();
 
         server = new Server(8080);
+//
+//        WebAppContext webapp = new WebAppContext();
+//        webapp.setContextPath("/");
+//        webapp.setWar(warFile.getAbsolutePath());
+//        server.setHandler(webapp);
+//
+//        server.start();
+//
+//        eurekaServiceUrl = "http://localhost:8080/v2";
 
-        WebAppContext webapp = new WebAppContext();
-        webapp.setContextPath("/");
-        webapp.setWar(warFile.getAbsolutePath());
-        server.setHandler(webapp);
 
+        // TODO Thread.currentThread().getContextClassLoader() 获取不到路径，先暂时这样；
+        WebAppContext webAppCtx = new WebAppContext(new File("./eureka-server/src/main/webapp").getAbsolutePath(), "/");
+        webAppCtx.setDescriptor(new File("./eureka-server/src/main/webapp/WEB-INF/web.xml").getAbsolutePath());
+        webAppCtx.setResourceBase(new File("./eureka-server/src/main/resources").getAbsolutePath());
+        webAppCtx.setClassLoader(Thread.currentThread().getContextClassLoader());
+        server.setHandler(webAppCtx);
         server.start();
 
         eurekaServiceUrl = "http://localhost:8080/v2";
+
     }
 
     private static File findWar() {
